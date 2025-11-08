@@ -1,44 +1,55 @@
-# 1. Import libraries
-#experiment 4
+# Import necessary libraries
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import accuracy_score, confusion_matrix
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
 
-# 2. Load dataset
-df = pd.read_csv("diabetes.csv")
-print(df.head())
+# Load dataset
+data = pd.read_csv("https://raw.githubusercontent.com/DPUSTAFF/Insem/main/prac/ML/Churn_Modelling.csv")
 
-# 3. Split into input (X) and output (y)
-X = df.drop("Outcome", axis=1)
-y = df["Outcome"]
+# Display first few rows
+print(data.head())
+# Drop unnecessary columns
+X = data.drop(['RowNumber', 'CustomerId', 'Surname', 'Exited'], axis=1)
+y = data['Exited']
 
-# 4. Train-Test Split
+# Handle categorical features (Geography, Gender)
+X = pd.get_dummies(X, drop_first=True)
+
+# Split dataset into train and test sets (80% - 20%)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+# Initialize ANN
+model = Sequential()
 
-# 5. Feature Scaling (important for KNN)
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+# Input Layer + First Hidden Layer
+model.add(Dense(units=16, activation='relu', input_dim=X_train.shape[1]))
 
-# 6. Build and Train KNN Model
-knn = KNeighborsClassifier(n_neighbors=5)
-knn.fit(X_train, y_train)
+# Second Hidden Layer
+model.add(Dense(units=8, activation='relu'))
 
-# 7. Predictions
-y_pred = knn.predict(X_test)
+# Optional Dropout to prevent overfitting
+model.add(Dropout(0.3))
 
-# 8. Evaluate Model
+# Output Layer (Binary classification)
+model.add(Dense(units=1, activation='sigmoid'))
+
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Train the model
+history = model.fit(X_train, y_train, batch_size=32, epochs=50, validation_split=0.2, verbose=1)
+# Predict on test data
+y_pred = (model.predict(X_test) > 0.5)
+
+# Calculate accuracy
 acc = accuracy_score(y_test, y_pred)
-prec = precision_score(y_test, y_pred)
-rec = recall_score(y_test, y_pred)
 cm = confusion_matrix(y_test, y_pred)
-error_rate = 1 - acc
 
-# 9. Display Results
-print("\nConfusion Matrix:\n", cm)
-print("\nAccuracy:", round(acc, 3))
-print("Precision:", round(prec, 3))
-print("Recall:", round(rec, 3))
-print("Error Rate:", round(error_rate, 3))
+print("✅ Accuracy Score:", round(acc * 100, 2), "%")
+print("\n📊 Confusion Matrix:\n", cm)
